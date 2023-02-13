@@ -149,9 +149,25 @@ struct multiline_text_section {
 	text::text_color color = text::text_color::black;
 };
 
+enum class hyperlink_type : uint8_t {
+	nation, state, province
+};
+
+struct hyperlink {
+	hyperlink_type link_type;
+	float x = 0.f;
+	float y = 0.f;
+	float width = 0.f;
+	float height = 0.f;
+};
+
+using text_substitution = std::variant<std::string_view, dcon::text_key, dcon::nation_id, dcon::province_id, dcon::state_definition_id>;
+
 class multiline_text_element_base : public element_base {
 private:
 	std::vector<multiline_text_section> sections = {};
+	std::vector<hyperlink> hyperlinks = {};
+	std::vector<text_substitution> substitutions = {};
 	int32_t font_id = 1;
 	int32_t font_size = 14;
 	float vertical_spacing = 0.f;
@@ -159,9 +175,22 @@ private:
 	int32_t line_count = 0;
 	int32_t current_line = 0;
 	int32_t visible_lines = 0;
+
+	void generate_sections(sys::state& state) noexcept;
+	void add_text_section(sys::state& state, std::string_view text, float& current_x, float& current_y) noexcept;
+	std::string_view get_substitute(sys::state& state, text::variable_type var_type) noexcept;
 public:
 	void on_create(sys::state& state) noexcept override;
+	void update_substitutions(sys::state& state, std::vector<text_substitution> subs);
+	void update_text(sys::state& state, dcon::text_sequence_id seq_id);
+	void on_lbutton_down(sys::state& state, int32_t x, int32_t y, sys::key_modifiers mods) noexcept override;
 	void render(sys::state& state, int32_t x, int32_t y) noexcept override;
+	int32_t get_scroll_width() {
+		return line_count - visible_lines;
+	}
+	void set_scroll_pos(int32_t pos) {
+		current_line = std::min(pos, get_scroll_width());
+	}
 };
 
 class draggable_target : public opaque_element_base {
